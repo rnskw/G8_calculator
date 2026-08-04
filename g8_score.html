@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>G8スコア計算ツール</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="G8スコア">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0F4C46">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230F4C46'/%3E%3Ctext x='50' y='62' font-size='42' font-family='Helvetica,Arial,sans-serif' font-weight='700' fill='%23F4F6F4' text-anchor='middle'%3EG8%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg: #EEF2F0;
+    --paper: #FFFFFF;
+    --ink: #142826;
+    --ink-soft: #4C615E;
+    --line: #D9E1DE;
+    --primary: #0F4C46;
+    --primary-ink: #F4F6F4;
+    --tint: #E4EEEC;
+    --good: #2C7A45;
+    --good-bg: #E4F2E7;
+    --alert: #B3392E;
+    --alert-bg: #FBE7E4;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium", "Yu Gothic", Meiryo, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header.top{
+    background: var(--primary);
+    color: var(--primary-ink);
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(15,76,70,0.22);
+  }
+  .brand{ display:flex; flex-direction: column; line-height: 1.15; }
+  .brand .eyebrow{
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #BFE3DA;
+    font-weight: 700;
+  }
+  .brand h1{
+    margin: 2px 0 0;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: .01em;
+  }
+
+  main{
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 12px 12px 8px;
+    /* space so fixed result bar never covers the last question */
+    padding-bottom: 168px;
+  }
+
+  .qtable{
+    display:flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .qrow{
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    display:flex;
+    align-items: stretch;
+    overflow: hidden;
+    transition: border-color .2s ease;
+  }
+  .qrow.answered{ border-color: #BEDAD3; }
+  .qnum{
+    flex: 0 0 32px;
+    background: var(--tint);
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 15px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding-top: 12px;
+  }
+  .qmain{
+    flex: 1;
+    display:flex;
+    padding: 10px 10px 10px 8px;
+    gap: 10px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .qtext{
+    flex: 1 1 130px;
+    min-width: 118px;
+    font-size: 15.5px;
+    line-height: 1.5;
+    padding-top: 2px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .qtext .sub{
+    display:block;
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-weight: 400;
+  }
+  .answers{
+    flex: 1 1 150px;
+    display:flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 140px;
+  }
+  .opt-btn{
+    appearance: none;
+    border: 1.5px solid var(--line);
+    background: #FBFCFB;
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 9px 10px;
+    font-size: 14.5px;
+    line-height: 1.35;
+    text-align: left;
+    font-family: inherit;
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+  }
+  .opt-btn .pt{
+    flex: 0 0 auto;
+    font-weight: 800;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    background: var(--tint);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+  .opt-btn:active{ transform: scale(0.98); }
+  .opt-btn.selected{
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-ink);
+  }
+  .opt-btn.selected .pt{
+    background: rgba(244,246,244,0.22);
+    color: var(--primary-ink);
+  }
+
+  .bmi-helper{
+    flex-basis: 100%;
+    display:flex;
+    gap: 8px;
+    margin-top: 2px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .bmi-helper input{
+    width: 88px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #FBFCFB;
+    color: var(--ink);
+  }
+  .bmi-helper label{
+    font-size: 12px;
+    color: var(--ink-soft);
+    display:flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .bmi-result{
+    font-size: 13px;
+    color: var(--primary);
+    font-weight: 800;
+    margin-left: 2px;
+  }
+
+  .footer-actions{
+    display:flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .btn-reset{
+    flex: 1;
+    border: 1.5px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 14.5px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .disclaimer{
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.65;
+    padding: 0 4px;
+  }
+  .install-hint{
+    margin-top: 10px;
+    background: var(--tint);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.65;
+  }
+  .install-hint b{ color: var(--primary); }
+
+  /* ---- fixed bottom result bar ---- */
+  .result-bar{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 16px rgba(20,40,38,0.12);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .result-bar-inner{
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .result-top-row{
+    display:flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .score-block{
+    display:flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .score-block .label{
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    letter-spacing: .04em;
+    align-self: center;
+    margin-right: 2px;
+  }
+  .score-block .value{
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .score-block .outof{
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+  .progress-chip{
+    flex: 0 0 auto;
+    background: var(--tint);
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .verdict{
+    margin-top: 8px;
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .verdict.neutral{ background: var(--tint); color: var(--ink-soft); }
+  .verdict.good{ background: var(--good-bg); color: var(--good); }
+  .verdict.alert{ background: var(--alert-bg); color: var(--alert); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="eyebrow">Geriatric Screening</span>
+    <h1>G8スコア計算</h1>
+  </div>
+</header>
+
+<main>
+
+  <div class="qtable" id="qtable"></div>
+
+  <div class="footer-actions">
+    <button class="btn-reset" id="resetBtn" type="button">すべての回答をリセット</button>
+  </div>
+
+  <div class="install-hint">
+    <b>ホーム画面に追加する方法：</b> Safari（iPhone）は共有ボタン →「ホーム画面に追加」。Chrome（Android）は右上メニュー →「ホーム画面に追加」／「アプリをインストール」。manifest.json / sw.js を同じフォルダに置いてhttps環境で開くと、インストールバナー表示とオフラインキャッシュが有効になります。
+  </div>
+
+  <div class="disclaimer">
+    本ツールは医療従事者向けの簡易補助ツールです。診断や治療方針の決定は必ず医師の判断に基づいて行ってください。計算結果の妥当性について本ツールは保証しません。
+  </div>
+
+</main>
+
+<div class="result-bar">
+  <div class="result-bar-inner">
+    <div class="result-top-row">
+      <div class="score-block">
+        <span class="label">合計</span>
+        <span class="value" id="totalScore">0</span>
+        <span class="outof">/ 17点</span>
+      </div>
+      <div class="progress-chip" id="progressText">0/8 回答済</div>
+    </div>
+    <div class="verdict neutral" id="verdictBadge">全項目に回答してください</div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  {
+    id: "food",
+    text: "過去3ヶ月間で食欲不振、消化器系の問題、咀嚼・嚥下困難などで食事量が減少しましたか？",
+    sub: "食事摂取量の低下",
+    options: [
+      { label: "著しい食事量の減少", pt: 0 },
+      { label: "中等度の食事量の減少", pt: 1 },
+      { label: "食事量の減少なし", pt: 2 }
+    ]
+  },
+  {
+    id: "weight",
+    text: "過去3ヶ月間で体重の減少がありましたか？",
+    sub: "体重減少",
+    options: [
+      { label: "3kg以上の減少", pt: 0 },
+      { label: "わからない", pt: 1 },
+      { label: "1〜3kgの減少", pt: 2 },
+      { label: "体重減少なし", pt: 3 }
+    ]
+  },
+  {
+    id: "mobility",
+    text: "自力での移動能力はどの程度ですか？",
+    sub: "運動能力",
+    options: [
+      { label: "寝たきり、または常に座位", pt: 0 },
+      { label: "ベッド・椅子から離れられるが外出はしない", pt: 1 },
+      { label: "自由に外出できる", pt: 2 }
+    ]
+  },
+  {
+    id: "psych",
+    text: "認知機能や精神状態に問題はありますか？",
+    sub: "神経心理学的問題",
+    options: [
+      { label: "重度の認知症またはうつ状態", pt: 0 },
+      { label: "軽度の認知症", pt: 1 },
+      { label: "精神的問題なし", pt: 2 }
+    ]
+  },
+  {
+    id: "bmi",
+    text: "BMI（体格指数）はどの範囲ですか？",
+    sub: "Body Mass Index",
+    options: [
+      { label: "BMI 19未満", pt: 0 },
+      { label: "BMI 19以上21未満", pt: 1 },
+      { label: "BMI 21以上23未満", pt: 2 },
+      { label: "BMI 23以上", pt: 3 }
+    ],
+    hasBmiHelper: true
+  },
+  {
+    id: "meds",
+    text: "1日に4種類以上の処方薬を服用していますか？",
+    sub: "多剤併用",
+    options: [
+      { label: "はい（4種類以上）", pt: 0 },
+      { label: "いいえ（3種類以下）", pt: 1 }
+    ]
+  },
+  {
+    id: "selfhealth",
+    text: "同年代の方と比べて、ご自身の健康状態をどう思いますか？",
+    sub: "主観的健康感",
+    options: [
+      { label: "良くない", pt: 0 },
+      { label: "わからない", pt: 0.5 },
+      { label: "同じくらい良い", pt: 1 },
+      { label: "良い", pt: 2 }
+    ]
+  },
+  {
+    id: "age",
+    text: "年齢は何歳ですか？",
+    sub: "年齢区分",
+    options: [
+      { label: "86歳以上", pt: 0 },
+      { label: "80〜85歳", pt: 1 },
+      { label: "79歳以下", pt: 2 }
+    ]
+  }
+];
+
+const MAX_SCORE = 17;
+const answers = {}; // id -> pt
+
+const qtable = document.getElementById('qtable');
+
+QUESTIONS.forEach((q, idx) => {
+  const row = document.createElement('div');
+  row.className = 'qrow';
+  row.id = 'row-' + q.id;
+
+  const num = document.createElement('div');
+  num.className = 'qnum';
+  num.textContent = idx + 1;
+
+  const qmain = document.createElement('div');
+  qmain.className = 'qmain';
+
+  const qtext = document.createElement('div');
+  qtext.className = 'qtext';
+  qtext.innerHTML = q.text + '<span class="sub">' + q.sub + '</span>';
+
+  const ansWrap = document.createElement('div');
+  ansWrap.className = 'answers';
+
+  q.options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'opt-btn';
+    btn.dataset.pt = opt.pt;
+    btn.innerHTML = '<span>' + opt.label + '</span><span class="pt">' + opt.pt + '点</span>';
+    btn.addEventListener('click', () => selectAnswer(q.id, opt.pt, btn, ansWrap, row));
+    ansWrap.appendChild(btn);
+  });
+
+  qmain.appendChild(qtext);
+  qmain.appendChild(ansWrap);
+
+  if (q.hasBmiHelper) {
+    const helper = document.createElement('div');
+    helper.className = 'bmi-helper';
+    helper.innerHTML = `
+      <label>身長(cm)<input type="number" inputmode="decimal" id="bmiHeight" placeholder="160"></label>
+      <label>体重(kg)<input type="number" inputmode="decimal" id="bmiWeight" placeholder="50"></label>
+      <span class="bmi-result" id="bmiResult"></span>
+    `;
+    qmain.appendChild(helper);
+  }
+
+  row.appendChild(num);
+  row.appendChild(qmain);
+  qtable.appendChild(row);
+});
+
+// BMI auto-calc helper: computes BMI and highlights the matching button
+function setupBmiHelper() {
+  const h = document.getElementById('bmiHeight');
+  const w = document.getElementById('bmiWeight');
+  const result = document.getElementById('bmiResult');
+  if (!h || !w) return;
+
+  function calc() {
+    const height = parseFloat(h.value);
+    const weight = parseFloat(w.value);
+    if (!height || !weight || height <= 0) {
+      result.textContent = '';
+      return;
+    }
+    const heightM = height / 100;
+    const bmi = weight / (heightM * heightM);
+    result.textContent = 'BMI ' + bmi.toFixed(1);
+
+    let pt;
+    if (bmi < 19) pt = 0;
+    else if (bmi < 21) pt = 1;
+    else if (bmi < 23) pt = 2;
+    else pt = 3;
+
+    const row = document.getElementById('row-bmi');
+    const btn = row.querySelectorAll('.opt-btn')[pt];
+    const ansWrap = row.querySelector('.answers');
+    selectAnswer('bmi', pt, btn, ansWrap, row);
+  }
+
+  h.addEventListener('input', calc);
+  w.addEventListener('input', calc);
+}
+setupBmiHelper();
+
+function selectAnswer(id, pt, btnEl, ansWrap, rowEl) {
+  answers[id] = pt;
+  ansWrap.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  btnEl.classList.add('selected');
+  rowEl.classList.add('answered');
+  updateScore();
+}
+
+function updateScore() {
+  const answeredIds = Object.keys(answers);
+  const total = answeredIds.reduce((sum, id) => sum + answers[id], 0);
+  const answeredCount = answeredIds.length;
+
+  document.getElementById('totalScore').textContent =
+    Number.isInteger(total) ? total : total.toFixed(1);
+  document.getElementById('progressText').textContent = answeredCount + '/8 回答済';
+
+  const badge = document.getElementById('verdictBadge');
+
+  if (answeredCount < 8) {
+    badge.className = 'verdict neutral';
+    badge.textContent = `未回答の項目があります（残り ${8 - answeredCount} 項目）`;
+  } else if (total <= 14) {
+    badge.className = 'verdict alert';
+    badge.textContent = `${Number.isInteger(total) ? total : total.toFixed(1)}点：要精査（カットオフ14点以下）低栄養・機能低下のリスクが高く、高齢者総合機能評価（CGA）の実施を推奨します。`;
+  } else {
+    badge.className = 'verdict good';
+    badge.textContent = `${Number.isInteger(total) ? total : total.toFixed(1)}点：低リスク（カットオフ14点超）現時点で明らかなリスクは示唆されませんが、臨床所見と併せて判断してください。`;
+  }
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  Object.keys(answers).forEach(k => delete answers[k]);
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.qrow').forEach(r => r.classList.remove('answered'));
+  const h = document.getElementById('bmiHeight');
+  const w = document.getElementById('bmiWeight');
+  const r = document.getElementById('bmiResult');
+  if (h) h.value = '';
+  if (w) w.value = '';
+  if (r) r.textContent = '';
+  updateScore();
+});
+
+updateScore();
+
+// Register service worker for offline use / installability (requires https or localhost)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      /* file:// や http 環境では登録できない場合があります */
+    });
+  });
+}
+</script>
+
+</body>
+</html>
