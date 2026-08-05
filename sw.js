@@ -3,7 +3,7 @@
 
 const CACHE_NAME = 'g8-score-cache-v1';
 const ASSETS_TO_CACHE = [
-  './g8_score.html',
+  './index.html',
   './manifest.json'
 ];
 
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // オフラインかつキャッシュにも無い場合、メインページで代替
-          return caches.match('./g8_score.html');
+          return caches.match('./index.html');
         });
     })
   );
