@@ -2,7 +2,7 @@
   "name": "G8スコア計算ツール",
   "short_name": "G8スコア",
   "description": "医療現場向け高齢者機能評価スケール G8 の簡易計算ツール",
-  "start_url": "./g8_score.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
